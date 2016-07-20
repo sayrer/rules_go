@@ -110,42 +110,8 @@ func (g *Generator) generateOne(rel string, pkg *build.Package) (*bzl.File, erro
 	for _, r := range rs {
 		file.Stmt = append(file.Stmt, r.Call)
 	}
-	if load := g.generateLoad(file); load != nil {
-		file.Stmt = append([]bzl.Expr{load}, file.Stmt...)
-	}
-	return file, nil
-}
 
-func (g *Generator) generateLoad(f *bzl.File) bzl.Expr {
-	var list []string
-	for _, kind := range []string{
-		"go_prefix",
-		"go_library",
-		"go_binary",
-		"go_test",
-		// TODO(yugui): Support cgo_library
-	} {
-		if len(f.Rules(kind)) > 0 {
-			list = append(list, kind)
-		}
-	}
-	if len(list) == 0 {
-		return nil
-	}
-	return loadExpr(goRulesBzl, list...)
-}
-
-func loadExpr(ruleFile string, rules ...string) bzl.Expr {
-	var list []bzl.Expr
-	for _, r := range append([]string{ruleFile}, rules...) {
-		list = append(list, &bzl.StringExpr{Value: r})
-	}
-
-	return &bzl.CallExpr{
-		X:            &bzl.LiteralExpr{Token: "load"},
-		List:         list,
-		ForceCompact: true,
-	}
+	return g.reconcile(file)
 }
 
 func isDescendingDir(dir, root string) bool {
