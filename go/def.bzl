@@ -989,6 +989,124 @@ def cgo_library(name, srcs,
 
 ################
 
+repository_tool_deps = {
+    'buildifier': struct(
+        importpath = 'github.com/bazelbuild/buildifier',
+        repo = 'https://github.com/bazelbuild/buildifier',
+        revision = '0ca1d7991357ae7a7555589af88930d82cf07c0a',
+    ),
+    'tools': struct(
+        importpath = 'golang.org/x/tools',
+        repo = 'https://github.com/golang/tools',
+        revision = '2bbdb4568e161d12394da43e88b384c6be63928b',
+    )
+}
+
+X_TOOLS_BUILD = """
+load("@//go:def.bzl", "go_prefix", "go_library")
+
+go_prefix("golang.org/x/tools")
+
+go_library(
+    name = "go/vcs",
+    srcs = glob(
+        include = ["go/vcs/*.go"],
+        exclude = ["go/vcs/*_test.go"],
+    ),
+    visibility = ["//visibility:public"],
+)
+"""
+
+def go_internal_tools_deps():
+  """only for internal use in rules_go"""
+  native.git_repository(
+      name = "io_bazel_buildifier",
+      commit = repository_tool_deps['buildifier'].revision,
+      remote = repository_tool_deps['buildifier'].repo,
+  )
+
+  native.new_git_repository(
+      name = "org_golang_x_tools",
+      build_file_content = X_TOOLS_BUILD,
+      commit = repository_tool_deps['tools'].revision,
+      remote = repository_tool_deps['tools'].repo,
+  )
+
+def _fetch_repository_tools_deps(ctx, goroot, gopath):
+  for name, dep in repository_tool_deps.items():
+    result = ctx.execute(['mkdir', '-p', ctx.path('src/' + dep.importpath)])
+    if result.return_code:
+      fail('failed to create directory: %s' % result.stderr)
+    ctx.download_and_extract(
+        '%s/archive/%s.zip' % (dep.repo, dep.revision),
+        'src/%s' % dep.importpath, '', 'zip', '%s-%s' % (name, dep.revision))
+
+  result = ctx.execute([
+      'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath, 'PATH=%s/bin' % goroot,
+      'go', 'generate', 'github.com/bazelbuild/buildifier/core'])
+  if result.return_code:
+    fail("failed to go genrate: %s" % result.stderr)
+
+_GO_REPOSITORY_TOOLS_BUILD_FILE = """
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "fetch_repo",
+    srcs = ["bin/fetch_repo"],
+)
+
+filegroup(
+    name = "gazelle",
+    srcs = ["bin/gazelle"],
+)
+"""
+
+def _go_repository_tools_impl(ctx):
+  go_tool = ctx.path(ctx.attr._go_tool)
+  goroot = go_tool.dirname.dirname
+  gopath = ctx.path('')
+  prefix = "github.com/bazelbuild/rules_go/" + ctx.attr._tools.package
+  src_path = ctx.path(ctx.attr._tools).dirname
+
+  _fetch_repository_tools_deps(ctx, goroot, gopath)
+
+  for t, pkg in [("gazelle", 'gazelle/gazelle'), ("fetch_repo", "fetch_repo")]:
+    ctx.symlink("%s/%s" % (src_path, t), "src/%s/%s" % (prefix, t))
+
+    result = ctx.execute([
+        'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath,
+        go_tool, "build",
+        "-o", ctx.path("bin/" + t), "%s/%s" % (prefix, pkg)])
+    if result.return_code:
+      fail("failed to build %s: %s" % (t, result.stderr))
+  ctx.file('BUILD', _GO_REPOSITORY_TOOLS_BUILD_FILE, False)
+
+_go_repository_tools = repository_rule(
+    _go_repository_tools_impl,
+    attrs = {
+        "_tools": attr.label(
+            default = Label("//go/tools:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_go_tool": attr.label(
+            default = Label("@io_bazel_rules_go_toolchain//:bin/go"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_x_tools": attr.label(
+            default = Label("@org_golang_x_tools//:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+        "_buildifier": attr.label(
+            default = Label("@io_bazel_buildifier//:BUILD"),
+            allow_files = True,
+            single_file = True,
+        ),
+    },
+)
+
 GO_TOOLCHAIN_BUILD_FILE = """
 package(
   default_visibility = [ "//visibility:public" ])
@@ -1057,4 +1175,7 @@ def go_repositories():
 
   _go_repository_select(
       name = "io_bazel_rules_go_toolchain",
+  )
+  _go_repository_tools(
+      name = "io_bazel_rules_go_repository_tools",
   )
