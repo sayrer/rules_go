@@ -1053,34 +1053,18 @@ repository_tool_deps = {
     )
 }
 
-X_TOOLS_BUILD = """
-load("@//go:def.bzl", "go_prefix", "go_library")
-
-go_prefix("golang.org/x/tools")
-
-go_library(
-    name = "go/vcs",
-    srcs = glob(
-        include = ["go/vcs/*.go"],
-        exclude = ["go/vcs/*_test.go"],
-    ),
-    visibility = ["//visibility:public"],
-)
-"""
-
 def go_internal_tools_deps():
   """only for internal use in rules_go"""
-  native.git_repository(
+  go_vendor(
       name = "io_bazel_buildifier",
-      commit = repository_tool_deps['buildifier'].revision,
-      remote = repository_tool_deps['buildifier'].repo,
+      revision = repository_tool_deps['buildifier'].revision,
+      importpath = repository_tool_deps['buildifier'].importpath,
   )
 
-  native.new_git_repository(
+  new_go_vendor(
       name = "org_golang_x_tools",
-      build_file_content = X_TOOLS_BUILD,
-      commit = repository_tool_deps['tools'].revision,
-      remote = repository_tool_deps['tools'].repo,
+      revision = repository_tool_deps['tools'].revision,
+      importpath = repository_tool_deps['tools'].importpath,
   )
 
 def _fetch_repository_tools_deps(ctx, goroot, gopath):
