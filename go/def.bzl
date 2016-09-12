@@ -988,7 +988,7 @@ def cgo_library(name, srcs,
 
 ################
 
-def _go_vendor_impl(ctx):
+def _go_repository_impl(ctx):
   fetch_repo = ctx.path(ctx.attr._fetch_repo)
 
   result = ctx.execute([
@@ -999,8 +999,8 @@ def _go_vendor_impl(ctx):
   if result.return_code:
     fail("failed to fetch %s: %s" % (ctx.attr.importpath, result.stderr))
 
-def _new_go_vendor_impl(ctx):
-  _go_vendor_impl(ctx)
+def _new_go_repository_impl(ctx):
+  _go_repository_impl(ctx)
   gazelle = ctx.path(ctx.attr._gazelle)
 
   result = ctx.execute([
@@ -1011,7 +1011,7 @@ def _new_go_vendor_impl(ctx):
     fail("failed to generate BUILD files for %s: %s" % (
         ctx.attr.importpath, result.stderr))
 
-_go_vendor_attrs = {
+_go_repository_attrs = {
     "importpath": attr.string(mandatory = True),
     "revision": attr.string(mandatory = True),
 
@@ -1022,14 +1022,14 @@ _go_vendor_attrs = {
     ),
 }
 
-go_vendor = repository_rule(
-    _go_vendor_impl,
-    attrs = _go_vendor_attrs,
+go_repository = repository_rule(
+    _go_repository_impl,
+    attrs = _go_repository_attrs,
 )
 
-new_go_vendor = repository_rule(
-    _new_go_vendor_impl,
-    attrs = _go_vendor_attrs + {
+new_go_repository = repository_rule(
+    _new_go_repository_impl,
+    attrs = _go_repository_attrs + {
         "_gazelle": attr.label(
             default = Label("@io_bazel_rules_go_repository_tools//:bin/gazelle"),
             allow_files = True,
@@ -1055,13 +1055,13 @@ repository_tool_deps = {
 
 def go_internal_tools_deps():
   """only for internal use in rules_go"""
-  go_vendor(
+  go_repository(
       name = "io_bazel_buildifier",
       revision = repository_tool_deps['buildifier'].revision,
       importpath = repository_tool_deps['buildifier'].importpath,
   )
 
-  new_go_vendor(
+  new_go_repository(
       name = "org_golang_x_tools",
       revision = repository_tool_deps['tools'].revision,
       importpath = repository_tool_deps['tools'].importpath,

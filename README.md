@@ -4,8 +4,8 @@
   <h2>Rules</h2>
   <ul>
     <li><a href="#go_repositories">go_repositories</a></li>
-    <li><a href="#go_vendor">go_vendor</a></li>
-    <li><a href="#new_go_vendor">new_go_vendor</a></li>
+    <li><a href="#go_repository">go_repository</a></li>
+    <li><a href="#new_go_repository">new_go_repository</a></li>
     <li><a href="#go_prefix">go_prefix</a></li>
     <li><a href="#go_library">go_library</a></li>
     <li><a href="#cgo_library">cgo_library</a></li>
@@ -135,11 +135,11 @@ All the other workspace rules and build rules assume that this rule is
 placed in the WORKSPACE.
 
 
-<a name="go_vendor"></a>
-## go\_vendor
+<a name="go_repository"></a>
+## go\_repository
 
 ```bzl
-go_vendor(name, importpath, revision)
+go_repository(name, importpath, revision)
 ```
 
 Fetches a remote repository of a Go project. It is an analogy to
@@ -182,11 +182,11 @@ Fetches a remote repository of a Go project. It is an analogy to
 </table>
 
 
-<a name="new_go_vendor"></a>
-## new\_go\_vendor
+<a name="new_go_repository"></a>
+## new\_go\_repository
 
 ```bzl
-new_go_vendor(name, importpath, revision)
+new_go_repository(name, importpath, revision)
 ```
 
 Fetches a remote repository of a Go project and automatically generates
